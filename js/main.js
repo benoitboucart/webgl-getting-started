@@ -4,18 +4,24 @@
   // uniform = JS global variabele alike
   const vsSource = `
     attribute vec4 aVertexPosition;
+    attribute vec4 aVertexColor;
 
     uniform mat4 uModelViewMatrix;
     uniform mat4 uProjectionMatrix;
 
+    varying lowp vec4 vColor;
+
     void main() {
       gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
+      vColor = aVertexColor;
     }
   `;
   // Fragment shader (color = white)
   const fsSource = `
-    void main() {
-      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    varying lowp vec4 vColor;
+
+    void main(void) {
+      gl_FragColor = vColor;
     }
   `;
 
@@ -82,12 +88,30 @@
         programInfo.attribLocations.vertexPosition);
     }
 
-    // Tell WebGL to use our program when drawing
+    // Tell WebGL how to pull out the colors from the color buffer
+    // into the vertexColor attribute.
+    {
+      const numComponents = 4;
+      const type = gl.FLOAT;
+      const normalize = false;
+      const stride = 0;
+      const offset = 0;
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
+      gl.vertexAttribPointer(
+        programInfo.attribLocations.vertexColor,
+        numComponents,
+        type,
+        normalize,
+        stride,
+        offset);
+      gl.enableVertexAttribArray(
+        programInfo.attribLocations.vertexColor);
+    }
 
+    // Tell WebGL to use our program when drawing
     gl.useProgram(programInfo.program);
 
     // Set the shader uniforms
-
     gl.uniformMatrix4fv(
       programInfo.uniformLocations.projectionMatrix,
       false,
@@ -153,6 +177,7 @@
 
 
   const initBuffers = gl => {
+    // POSITIONS
     // Create a buffer for the square's positions.
     const positionBuffer = gl.createBuffer();
 
@@ -175,8 +200,21 @@
       new Float32Array(positions),
       gl.STATIC_DRAW);
 
+    // COLORS
+    const colors = [
+      1.0, 1.0, 1.0, 1.0,    // white
+      1.0, 0.0, 0.0, 1.0,    // red
+      0.0, 1.0, 0.0, 1.0,    // green
+      0.0, 0.0, 1.0, 1.0,    // blue
+    ];
+
+    const colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+
     return {
       position: positionBuffer,
+      color: colorBuffer,
     };
   }
 
@@ -203,6 +241,7 @@
       program: shaderProgram,
       attribLocations: {
         vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+        vertexColor: gl.getAttribLocation(shaderProgram, 'aVertexColor'),
       },
       uniformLocations: {
         projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
